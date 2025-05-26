@@ -13,11 +13,10 @@ class Level_One extends Phaser.Scene {
         this.SCALE = 2.0;
         this.userControl = true;
         this.counter = 0;
+        this.timer1 = 0;
     }
 
     create() {
-        // Create a new tilemap game object which uses 18x18 pixel tiles, and is
-        // 45 tiles wide and 25 tiles tall.
         this.map = this.add.tilemap("platformer-level-1", 18, 18, 45, 25);
 
         // Add a tileset to the map
@@ -73,8 +72,8 @@ class Level_One extends Phaser.Scene {
         
 
         // set up player avatar
-        //50 1050
-        my.sprite.player = this.physics.add.sprite(470, 50, "platformer_characters", "tile_0000.png");
+        //470 50
+        my.sprite.player = this.physics.add.sprite(50, 1050, "platformer_characters", "tile_0000.png");
         //my.sprite.player.setCollideWorldBounds(true);
         my.sprite.player.setMaxVelocity(225, 1000000);
 
@@ -82,24 +81,23 @@ class Level_One extends Phaser.Scene {
         this.physics.add.collider(my.sprite.player, this.groundLayer);
 
 
-        my.vfx.coinCollect = this.add.particles(0, 0, "kenny-particles", {
+        my.vfx.crateCollect = this.add.particles(0, 0, "kenny-particles", {
             frame: ['star_07.png', 'star_08.png'],
             scale: {start: 0.03, end: 0.1},
             lifespan: 350,
             alpha: {start: 1, end: 0.1},
             stopAfter: 4
         });
-        my.vfx.coinCollect.stop();
+        my.vfx.crateCollect.stop();
 
         this.physics.add.overlap(my.sprite.player, this.crateGroup, (obj1, obj2) => {
             obj2.destroy();
-            my.vfx.coinCollect.startFollow(obj2, 0, 0, false);
-            my.vfx.coinCollect.start();
-            //add particles/noise on collect
+            my.vfx.crateCollect.startFollow(obj2, 0, 0, false);
+            my.vfx.crateCollect.start();
+            this.collect.play();
         });
 
         this.physics.add.overlap(my.sprite.player, this.endLevel, (obj1, obj2) => {
-            //run end level function
             this.userControl = false;
             var txt = this.add.text(200, 100, 'LEVEL\n COMPLETE');
             my.sprite.player.body.setVelocityX(0);
@@ -124,22 +122,38 @@ class Level_One extends Phaser.Scene {
         }, this);
 
         // movement vfx
-        my.vfx.walking = this.add.particles(200, -200, "kenny-particles", {
+        my.vfx.walking = this.add.particles(0, 0, "kenny-particles", {
             frame: ['smoke_03.png', 'smoke_09.png'],
             //add random: true
-            scale: {start: 0.03, end: 0.1},
+            scale: {start: 0.02, end: 0.08},
             //maxAliveParticles: 50,
-            lifespan: 350,
+            lifespan: 200,
+            //gravityY: 50,
+            alpha: {start: 0.5, end: 0.1}, 
+        });
+        my.vfx.walking.stop();
+
+
+        //jumping
+        my.vfx.jumping = this.add.particles(0, 0, "kenny-particles", {
+            frame: ['trace_01.png', 'trace_02.png'],
+            //add random: true
+            scale: {start: 0.2, end: 0.03},
+            //maxAliveParticles: 1,
+            lifespan: 400,
             //gravityY: 50,
             alpha: {start: 1, end: 0.1}, 
         });
-        my.vfx.walking.stop();
+        my.vfx.jumping.stop();
         
 
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.cameras.main.startFollow(my.sprite.player, true, 0.25, 0.25); // (target, [,roundPixels][,lerpX][,lerpY])
         this.cameras.main.setDeadzone(50, 50);
         this.cameras.main.setZoom(this.SCALE);
+
+        this.jump = this.sound.add('jump');
+        this.collect = this.sound.add('collect');
 
     }
 
@@ -157,7 +171,7 @@ class Level_One extends Phaser.Scene {
                 // Only play smoke effect if touching the ground
 
                 if (my.sprite.player.body.blocked.down) {
-                    my.vfx.walking.stop();
+                    my.vfx.walking.start();
                 }
             }
         } else if(cursors.right.isDown) {
@@ -169,7 +183,7 @@ class Level_One extends Phaser.Scene {
                 my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
                 // Only play smoke effect if touching the ground
                 if (my.sprite.player.body.blocked.down) {
-                    my.vfx.walking.stop();
+                    my.vfx.walking.start();
                 }
             }
 
@@ -190,6 +204,21 @@ class Level_One extends Phaser.Scene {
             }
             if(my.sprite.player.body.blocked.down && Phaser.Input.Keyboard.JustDown(cursors.up)) {
                 my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
+                my.vfx.jumping.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight-10, false);
+                //my.vfx.jumping.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
+                my.vfx.walking.stop();
+                my.vfx.jumping.start();
+                this.timer1 = 10;
+                //VERY LOUD
+                this.jump.play();
+            }
+            
+        }
+
+        if(this.timer1 > 0){
+            this.timer1--;
+            if(this.timer1 == 0){
+                my.vfx.jumping.stop();
             }
         }
 
